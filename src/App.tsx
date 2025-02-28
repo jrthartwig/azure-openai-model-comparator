@@ -134,77 +134,102 @@ function ComparisonApp() {
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <header className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2 tracking-tight">
-            Azure OpenAI Model Comparator
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300 text-lg max-w-2xl mx-auto">
-            Compare responses from multiple Azure OpenAI models side by side in real-time
-          </p>
-          <div className="mt-4 inline-block bg-blue-100 dark:bg-blue-900 rounded-full px-4 py-1">
-            <span className="text-sm text-blue-800 dark:text-blue-200 font-medium">
-              {selectedModels.length} {selectedModels.length === 1 ? 'Model' : 'Models'} Selected
-            </span>
+      <div className="flex flex-col items-center justify-center w-full">
+        {/* Centered Header */}
+        <header className="w-full text-center py-12 px-4">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-5xl font-bold text-gray-800 dark:text-white mb-6 tracking-tight">
+              Azure OpenAI Model Comparator
+            </h1>
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+              Compare responses from multiple Azure OpenAI models side by side in real-time
+            </p>
           </div>
         </header>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-          <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Model Configuration</h2>
+
+        {/* Main Content Container */}
+        <div className="container max-w-7xl w-full px-4 pb-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
+            {/* Left Side - Model Configuration */}
+            <div className="lg:col-span-5 xl:col-span-4">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden h-full">
+                <div className="p-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                  <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Model Configuration</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Add Azure OpenAI models to compare
+                  </p>
+                </div>
+                <div className="p-6">
+                  <ModelConfigForm />
+                </div>
               </div>
-              <div className="p-5">
-                <ModelConfigForm />
+            </div>
+            
+            {/* Right Side - Model Selection & Prompt Input */}
+            <div className="lg:col-span-7 xl:col-span-8 space-y-8">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="p-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Selected Models</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      Choose at least 2 models to compare
+                    </p>
+                  </div>
+                  <div className="bg-blue-100 dark:bg-blue-900 rounded-full px-4 py-1.5">
+                    <span className="text-sm text-blue-800 dark:text-blue-200 font-medium">
+                      {selectedModels.length} {selectedModels.length === 1 ? 'Model' : 'Models'} Selected
+                    </span>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <ModelSelector />
+                </div>
+              </div>
+              
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="p-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                  <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Prompt Input</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Enter your prompt to generate responses
+                  </p>
+                </div>
+                <div className="p-6">
+                  <PromptInput 
+                    onSubmit={handlePromptSubmit}
+                    isStreaming={streaming.isStreaming}
+                    onStopStreaming={stopStreaming}
+                  />
+                </div>
               </div>
             </div>
           </div>
           
-          <div className="lg:col-span-3">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Selected Models</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-8">
+            <div className="p-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Model Responses</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Compare outputs from different models
+                </p>
               </div>
-              <div className="p-5">
-                <ModelSelector />
-              </div>
+              {streaming.isStreaming && (
+                <div className="flex items-center bg-green-100 dark:bg-green-900 rounded-full px-4 py-1.5">
+                  <div className="animate-pulse mr-2 h-2.5 w-2.5 rounded-full bg-green-500"></div>
+                  <span className="text-sm text-green-700 dark:text-green-300 font-medium">Streaming...</span>
+                </div>
+              )}
             </div>
-            
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Prompt Input</h2>
-              </div>
-              <div className="p-5">
-                <PromptInput 
-                  onSubmit={handlePromptSubmit}
-                  isStreaming={streaming.isStreaming}
-                  onStopStreaming={stopStreaming}
-                />
-              </div>
+            <div className="p-6">
+              <ResponsePanel 
+                responses={streaming.responses} 
+                isStreaming={streaming.isStreaming}
+              />
             </div>
           </div>
         </div>
-        
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Model Responses</h2>
-            {streaming.isStreaming && (
-              <div className="flex items-center">
-                <div className="animate-pulse mr-2 h-2.5 w-2.5 rounded-full bg-green-500"></div>
-                <span className="text-sm text-green-600 dark:text-green-400 font-medium">Streaming...</span>
-              </div>
-            )}
-          </div>
-          <div className="p-5">
-            <ResponsePanel 
-              responses={streaming.responses} 
-              isStreaming={streaming.isStreaming}
-            />
-          </div>
-        </div>
-        
-        <footer className="mt-12 text-center text-gray-500 dark:text-gray-400 text-sm">
+          
+        {/* Centered Footer */}
+        <footer className="w-full text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
           <p>&copy; {new Date().getFullYear()} Azure OpenAI Model Comparator</p>
         </footer>
       </div>

@@ -22,17 +22,14 @@ export default function PromptInput({ onSubmit, isStreaming, onStopStreaming }: 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Enter your prompt
-        </label>
         <div className="relative">
           <textarea
             id="prompt"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             disabled={isStreaming}
-            placeholder="Ask the models a question or provide a task..."
-            rows={5}
+            placeholder="Enter a prompt for the AI models..."
+            rows={6}
             className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm 
                      focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400
                      disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-500 dark:disabled:text-gray-400
@@ -57,7 +54,7 @@ export default function PromptInput({ onSubmit, isStreaming, onStopStreaming }: 
           <button
             type="button"
             onClick={onStopStreaming}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md 
+            className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-md 
                      shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 
                      focus:ring-offset-2 focus:ring-red-500 transition-colors"
           >
@@ -70,7 +67,7 @@ export default function PromptInput({ onSubmit, isStreaming, onStopStreaming }: 
           <button
             type="submit"
             disabled={!prompt.trim() || !hasEnoughModels}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md 
+            className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-md 
                      shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 
                      focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-300 dark:disabled:bg-gray-600 
                      disabled:cursor-not-allowed transition-colors"
@@ -82,6 +79,12 @@ export default function PromptInput({ onSubmit, isStreaming, onStopStreaming }: 
           </button>
         )}
       </div>
+      
+      {!hasEnoughModels && (
+        <div className="text-amber-600 dark:text-amber-400 text-sm mt-2">
+          Please select at least 2 models to compare
+        </div>
+      )}
     </form>
   );
 }

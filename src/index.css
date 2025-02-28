@@ -35,6 +35,40 @@
   }
 }
 
+/* Enhanced prose for dark mode */
+.dark .prose {
+  color: #e5e7eb; /* text-gray-200 equivalent */
+}
+
+.dark .prose h1,
+.dark .prose h2,
+.dark .prose h3,
+.dark .prose h4 {
+  color: #f9fafb; /* text-gray-50 equivalent */
+}
+
+.dark .prose strong {
+  color: #f3f4f6; /* text-gray-100 equivalent */
+}
+
+.dark .prose a {
+  color: #93c5fd; /* text-blue-300 equivalent */
+}
+
+.dark .prose code {
+  color: #f3f4f6; /* text-gray-100 equivalent */
+  background-color: #374151; /* bg-gray-700 equivalent */
+}
+
+.dark .prose blockquote {
+  color: #d1d5db; /* text-gray-300 equivalent */
+  border-color: #4b5563; /* border-gray-600 equivalent */
+}
+
+.dark .prose pre {
+  background-color: #1f2937; /* bg-gray-800 equivalent */
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
