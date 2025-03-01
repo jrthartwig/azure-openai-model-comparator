@@ -18,6 +18,26 @@ interface AzureOpenAIResponse {
   }[];
 }
 
+// Helper to detect model types
+export const detectModelType = (modelConfig: ModelConfig): 'o1' | 'phi' | 'standard' => {
+  const deploymentName = (modelConfig.deploymentName || modelConfig.deploymentId || '').toLowerCase();
+  const modelName = (modelConfig.name || '').toLowerCase();
+  const endpoint = (modelConfig.endpoint || '').toLowerCase();
+  
+  if (deploymentName.includes('o1') || modelName.includes('o1')) {
+    return 'o1';
+  } else if (
+    deploymentName.includes('phi') || 
+    modelName.includes('phi') || 
+    endpoint.includes('phi') ||
+    endpoint.includes('models.ai.azure.com')
+  ) {
+    return 'phi';
+  } else {
+    return 'standard';
+  }
+};
+
 export async function streamCompletion(
   modelConfig: ModelConfig,
   prompt: string,
