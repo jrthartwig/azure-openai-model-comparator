@@ -53,6 +53,54 @@ export default function ResponsePanel({ responses, isStreaming }: ResponsePanelP
     return model ? detectModelType(model) : 'standard';
   };
   
+  // Get loading state text by model type
+  const getLoadingStateText = (modelType: string) => {
+    switch(modelType) {
+      case 'o1':
+        return 'Reasoning';
+      case 'phi':
+        return 'Processing';
+      case 'deepseek':
+        return 'Streaming';
+      default:
+        return 'Streaming';
+    }
+  };
+  
+  // Get loading state icon for each model type
+  const getLoadingStateIcon = (modelType: string) => {
+    if (modelType === 'deepseek') {
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
+             className="w-6 h-6 text-blue-600 dark:text-blue-400">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      );
+    }
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
+           className="w-6 h-6 text-blue-600 dark:text-blue-400">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    );
+  };
+  
+  // Get loading state message for each model type
+  const getLoadingStateMessage = (modelType: string) => {
+    switch(modelType) {
+      case 'o1':
+        return 'O1 models perform multi-step reasoning to generate comprehensive responses';
+      case 'phi':
+        return 'Phi models combine efficiency with strong reasoning capabilities';
+      case 'deepseek':
+        return 'DeepSeek is streaming its response in real-time';
+      default:
+        return 'Waiting for response...';
+    }
+  };
+  
   const responseEntries = Object.entries(responses);
   
   if (responseEntries.length === 0) {
@@ -140,9 +188,7 @@ export default function ResponsePanel({ responses, isStreaming }: ResponsePanelP
                                   'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'}`}
                 >
                   <span className="animate-pulse mr-1.5 h-1.5 w-1.5 rounded-full bg-current"></span>
-                  {modelType === 'o1' ? 'Reasoning' : 
-                   modelType === 'phi' ? 'Processing' : 
-                   'Streaming'}
+                  {getLoadingStateText(modelType)}
                 </span>
               ) : (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
@@ -229,7 +275,7 @@ export default function ResponsePanel({ responses, isStreaming }: ResponsePanelP
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Waiting for response...
+                      {getLoadingStateMessage(modelType)}
                     </div>
                   )}
                 </div>

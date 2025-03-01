@@ -5,6 +5,44 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Azure OpenAI Model Comparator</title>
+    <script>
+      // Helper to check if backend server is accessible
+      async function checkBackendHealth() {
+        try {
+          const response = await fetch('/api/health');
+          if (response.ok) {
+            console.log('Backend server is running!');
+            const data = await response.json();
+            console.log('Health check response:', data);
+          } else {
+            console.error('Backend server returned an error:', response.status);
+          }
+        } catch (err) {
+          console.error('Failed to connect to backend server. Make sure it is running on port 3001:', err);
+          
+          // Show a warning banner at the top of the page
+          const banner = document.createElement('div');
+          banner.style.backgroundColor = '#FFEBEE';
+          banner.style.color = '#B71C1C';
+          banner.style.padding = '12px';
+          banner.style.textAlign = 'center';
+          banner.style.position = 'fixed';
+          banner.style.top = '0';
+          banner.style.left = '0';
+          banner.style.right = '0';
+          banner.style.zIndex = '1000';
+          banner.innerHTML = `
+            <strong>Warning:</strong> Backend server not detected! Special models (Phi, DeepSeek) will not work.
+            <br/>
+            Start the backend server with: <code>npm run server</code>
+          `;
+          document.body.prepend(banner);
+        }
+      }
+      
+      // Run check when the page loads
+      window.addEventListener('load', checkBackendHealth);
+    </script>
   </head>
   <body>
     <div id="root"></div>
