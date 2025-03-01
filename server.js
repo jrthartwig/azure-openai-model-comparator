@@ -11,7 +11,7 @@ import { Readable } from 'stream';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables
+// Load environment variables (as fallback)
 dotenv.config();
 
 // Create Express app
@@ -34,37 +34,31 @@ app.use((req, res, next) => {
 // Helper function to handle model-specific requests with streaming support
 async function handleModelRequest(req, res, modelType) {
   try {
-    // Get API configuration from environment variables
-    const apiKey = modelType === 'phi' 
-      ? process.env.VITE_PHI_API_KEY 
-      : process.env.VITE_DEEPSEEK_API_KEY;
-      
-    const baseUrl = modelType === 'phi'
-      ? process.env.VITE_PHI_BASE_URL
-      : process.env.VITE_DEEPSEEK_BASE_URL;
-      
-    // Check if we have the necessary configuration
-    if (!apiKey || !baseUrl) {
-      console.error(`Missing API configuration for ${modelType} model`);
-      console.log('Available environment variables:', Object.keys(process.env).filter(key => key.startsWith('VITE_')));
-      
-      return res.status(500).json({ 
-        error: `Missing API configuration for ${modelType} model. Check your .env file.` 
+    // Extract credentials from the request body
+    const { apiKey, endpoint, deploymentId, ...otherParams } = req.body;
+    
+    // Validate required parameters
+    if (!apiKey || !endpoint) {
+      return res.status(400).json({ 
+        error: `Missing required parameters for ${modelType} model.`,
+        details: "Both 'apiKey' and 'endpoint' must be provided in the request body."
       });
     }
     
     // Clean up base URL (remove trailing slashes)
-    const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    const cleanBaseUrl = endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint;
     
     // Build the full API URL based on model type
     const apiPath = modelType === 'phi' ? '/v1/chat/completions' : '/chat/completions';
     const apiUrl = `${cleanBaseUrl}${apiPath}`;
     
+    // Extract the model request parameters (excluding credentials)
+    const modelRequestBody = { ...otherParams };
+    
     // Check if client requested streaming
-    const isStreamingRequest = req.body.stream === true;
+    const isStreamingRequest = modelRequestBody.stream === true;
     
     console.log(`Making ${isStreamingRequest ? 'streaming' : 'non-streaming'} request to ${apiUrl}`);
-    console.log('Request body:', req.body);
     
     if (isStreamingRequest) {
       // Handle streaming response
@@ -77,7 +71,7 @@ async function handleModelRequest(req, res, modelType) {
           'Authorization': `Bearer ${apiKey}`,
           'Accept': 'text/event-stream'
         },
-        data: req.body,
+        data: modelRequestBody,
         responseType: 'stream',
       });
       
@@ -104,7 +98,7 @@ async function handleModelRequest(req, res, modelType) {
           'api-key': apiKey,
           'Authorization': `Bearer ${apiKey}`
         },
-        data: req.body,
+        data: modelRequestBody,
         validateStatus: status => true, // Accept all status codes to handle errors gracefully
       });
       
@@ -122,7 +116,6 @@ async function handleModelRequest(req, res, modelType) {
     console.error(`Error in ${modelType} API:`, error.message);
     
     if (error.response) {
-      console.error('Response data:', error.response.data);
       console.error('Response status:', error.response.status);
     }
     
@@ -149,22 +142,10 @@ app.post('/api/deepseek', async (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  // Also return env vars for debugging (excluding sensitive values)
-  const envVars = {};
-  for (const key of Object.keys(process.env)) {
-    if (key.startsWith('VITE_')) {
-      if (key.includes('KEY') || key.includes('SECRET')) {
-        envVars[key] = '[REDACTED]';
-      } else {
-        envVars[key] = process.env[key];
-      }
-    }
-  }
-  
   res.json({ 
     status: 'ok', 
     models: ['phi', 'deepseek'],
-    environment: envVars
+    message: 'Backend server is running. You can configure model credentials directly in the frontend.'
   });
 });
 
@@ -183,10 +164,6 @@ app.listen(port, () => {
   console.log(`- Phi model: http://localhost:${port}/api/phi`);
   console.log(`- DeepSeek model: http://localhost:${port}/api/deepseek`);
   console.log('--------------------------------------');
-  console.log('Environment variables:');
-  console.log(`- VITE_PHI_API_KEY: ${process.env.VITE_PHI_API_KEY ? '[SET]' : '[NOT SET]'}`);
-  console.log(`- VITE_PHI_BASE_URL: ${process.env.VITE_PHI_BASE_URL || '[NOT SET]'}`);
-  console.log(`- VITE_DEEPSEEK_API_KEY: ${process.env.VITE_DEEPSEEK_API_KEY ? '[SET]' : '[NOT SET]'}`);
-  console.log(`- VITE_DEEPSEEK_BASE_URL: ${process.env.VITE_DEEPSEEK_BASE_URL || '[NOT SET]'}`);
+  console.log('Using dynamic credentials mode: Credentials are passed with each request');
   console.log('--------------------------------------');
 });

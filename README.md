@@ -5,10 +5,11 @@ A tool to compare responses from different Azure OpenAI models side by side, inc
 ## Features
 
 - Compare responses from multiple Azure OpenAI models side by side
-- Support for streaming responses from standard models
+- Support for streaming responses from standard models and DeepSeek
 - Support for special models like O1, Phi, and DeepSeek
 - Real-time response display with Markdown formatting
 - Syntax highlighting for code in responses
+- Configure all model credentials directly from the UI - no need to set environment variables!
 
 ## Setup
 
@@ -19,72 +20,70 @@ A tool to compare responses from different Azure OpenAI models side by side, inc
 npm install
 ```
 
-3. Create a `.env` file with your API keys and endpoints:
-
-```
-# Server port
-PORT=3001
-
-# Phi model configuration
-VITE_PHI_API_KEY=your_phi_api_key_here
-VITE_PHI_BASE_URL=https://phi-4-voljh.eastus.models.ai.azure.com
-
-# DeepSeek model configuration
-VITE_DEEPSEEK_API_KEY=your_deepseek_api_key_here
-VITE_DEEPSEEK_BASE_URL=https://DeepSeek-R1-ibhnj.eastus.models.ai.azure.com
-```
-
-## Running the Application
-
-The application consists of a React frontend and an Express backend server to handle API requests for special models.
-
-### Development Mode
-
-To run both the frontend and backend in development mode:
+3. Start the application in development mode:
 
 ```bash
 npm run dev:full
 ```
 
-This will start the Vite dev server for the frontend at http://localhost:3000 and the Express server for the backend at http://localhost:3001.
+This will start both the frontend (port 3000) and the backend server (port 3001).
 
-### Starting Only the Frontend
+## Running in Production
 
-```bash
-npm run dev
-```
-
-### Starting Only the Backend Server
-
-```bash
-npm run server
-```
-
-### Production Build
+1. Build the frontend:
 
 ```bash
 npm run build
 ```
 
-## Usage
+2. Start the server:
 
-1. Add your Azure OpenAI models in the Model Configuration panel
-2. Select at least 2 models to compare
-3. Enter your prompt in the input box
-4. Click "Send Prompt" to see the responses
+```bash
+NODE_ENV=production npm run server
+```
 
-## Model Types
+This will serve both the backend API and the static frontend files from the `dist` directory.
 
-- **Standard models**: GPT-4, GPT-3.5 - Uses direct Azure OpenAI API with streaming
-- **O1 models**: Uses Azure OpenAI API without streaming
-- **Phi models**: Uses the backend server to route requests to Azure AI Studio
-- **DeepSeek models**: Uses the backend server to route requests to Azure AI Studio
+## Model Configuration
+
+All model credentials can be configured directly through the frontend UI. For each model type:
+
+### Standard and O1 Models
+
+- **Endpoint**: The Azure OpenAI endpoint (e.g., `https://your-resource.openai.azure.com`)
+- **API Key**: Your Azure OpenAI API key
+- **Deployment ID**: The deployment name of your model
+
+### Phi and DeepSeek Models
+
+- **Endpoint**: The Azure AI Studio endpoint (e.g., `https://phi-4-voljh.eastus.models.ai.azure.com` or `https://DeepSeek-R1-ibhnj.eastus.models.ai.azure.com`)
+- **API Key**: Your Azure AI Studio API key
+- **Deployment ID**: Optional, sometimes not needed for these models
+
+For Phi models, use the endpoint format: `https://{name}.{region}.models.ai.azure.com`
+For DeepSeek models, use the endpoint format: `https://DeepSeek-R1-{id}.{region}.models.ai.azure.com`
+
+## Architecture
+
+The application consists of two parts:
+
+1. **Frontend**: A React application built with Vite, responsible for the UI and for direct API calls to standard Azure OpenAI models.
+   
+2. **Backend**: An Express server that acts as a proxy for requests to Phi and DeepSeek models, helping avoid CORS issues and providing better error handling.
+
+All model credentials are passed directly from the frontend to the appropriate API (either directly to Azure OpenAI API for standard models or through the backend proxy for Phi and DeepSeek models).
 
 ## Troubleshooting
 
-If you encounter issues with the backend server:
+If you encounter errors with specific model types:
 
-1. Check that your environment variables are set correctly
-2. Look for error messages in the server console
-3. Ensure you have the correct API keys and endpoints for your models
-4. For DeepSeek models, make sure you're using the base URL without any path components
+### Standard and O1 Models
+
+- Check if your Azure OpenAI API key and endpoint are correct
+- Verify that the deployment ID exists in your Azure OpenAI resource
+
+### Phi and DeepSeek Models
+
+- Make sure the backend server is running (check http://localhost:3001/api/health)
+- Verify that your Azure AI Studio API key and endpoint are correct
+- Check browser console for detailed error messages

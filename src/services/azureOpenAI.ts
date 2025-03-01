@@ -67,7 +67,13 @@ export async function streamCompletion(
       // Use the backend server for Phi models (non-streaming for now)
       url = '/api/phi';
       requestBody = {
-        model: modelConfig.deploymentName || modelConfig.name || 'Phi-4',
+        // Include credentials in the request
+        apiKey: modelConfig.apiKey,
+        endpoint: modelConfig.endpoint,
+        deploymentId: modelConfig.deploymentId,
+        
+        // Model parameters
+        model: modelConfig.deploymentName || modelConfig.name || "Phi-4",
         messages: [
           { role: 'system', content: 'You are a helpful assistant.' },
           { role: 'user', content: prompt }
@@ -80,7 +86,13 @@ export async function streamCompletion(
       // Use the backend server for DeepSeek models with streaming
       url = '/api/deepseek';
       requestBody = {
-        model: modelConfig.deploymentName || modelConfig.name || 'DeepSeek',
+        // Include credentials in the request
+        apiKey: modelConfig.apiKey,
+        endpoint: modelConfig.endpoint,
+        deploymentId: modelConfig.deploymentId,
+        
+        // Model parameters
+        model: modelConfig.deploymentName || modelConfig.name || "DeepSeek",
         messages: [
           { role: 'system', content: 'You are a helpful assistant.' },
           { role: 'user', content: prompt }
