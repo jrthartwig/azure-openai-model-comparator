@@ -1,5 +1,6 @@
 import { ModelConfig } from '../types';
 
+// Updated interface with proper types
 interface AzureOpenAIResponse {
   id: string;
   object: string;
@@ -12,10 +13,16 @@ interface AzureOpenAIResponse {
     text?: string;
     message?: {
       content?: string;
+      role?: string;
     };
     index: number;
     finish_reason: string | null;
   }[];
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
 }
 
 // Helper to detect model types
@@ -44,6 +51,24 @@ export const detectModelType = (modelConfig: ModelConfig): 'o1' | 'phi' | 'deeps
     return 'standard';
   }
 };
+
+// Helper function to extract content from a response object
+function extractContentFromResponse(responseObject: any): string {
+  if (!responseObject || typeof responseObject !== 'object') {
+    return '';
+  }
+  
+  if (responseObject.choices && responseObject.choices.length > 0) {
+    const choice = responseObject.choices[0];
+    // Check all possible locations for content
+    return choice?.message?.content || 
+           choice?.delta?.content || 
+           choice?.text || 
+           '';
+  }
+  
+  return '';
+}
 
 export async function streamCompletion(
   modelConfig: ModelConfig,
@@ -152,26 +177,21 @@ export async function streamCompletion(
     }
 
     // Handle non-streaming responses (O1, Phi)
-    if ((modelType === 'o1' || modelType === 'phi') && !requestBody.stream) {
+    if ((modelType === 'o1' || modelType === 'phi') || !requestBody.stream) {
       try {
         const jsonResponse = await response.json();
         console.log('Received non-streaming response');
         
-        // Extract the content from the response
-        let content = '';
-        
-        if (jsonResponse.choices && jsonResponse.choices.length > 0) {
-          content = jsonResponse.choices[0]?.message?.content || '';
-        }
+        // Extract the content from the response using the helper function
+        const content = extractContentFromResponse(jsonResponse);
         
         if (content) {
           onData(content);
+          onComplete();
         } else {
           console.error('No content found in response:', jsonResponse);
           throw new Error('No content found in the response');
         }
-        
-        onComplete();
       } catch (e) {
         console.error('Error processing non-streaming response:', e);
         onError(new Error(`Failed to process response: ${e instanceof Error ? e.message : 'Unknown error'}`));
@@ -185,52 +205,42 @@ export async function streamCompletion(
       }
 
       const decoder = new TextDecoder('utf-8');
+      let buffer = '';
 
-      // Process stream
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        try {
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(line => line.trim() !== '');
+      try {
+        // Process stream
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
           
-          for (const line of lines) {
-            // Each line starts with "data: "
-            if (line.startsWith('data: ')) {
-              const jsonData = line.substring(6);
-              
-              // End of stream
-              if (jsonData === '[DONE]') {
-                break;
-              }
-              
-              try {
-                const parsedData: AzureOpenAIResponse = JSON.parse(jsonData);
-                
-                // Extract content from the delta (for chat completion)
-                const content = parsedData.choices[0]?.delta?.content || '';
-                
-                if (content) {
-                  onData(content);
-                }
-                
-                // Check if the response is complete
-                if (parsedData.choices[0]?.finish_reason !== null) {
-                  break;
-                }
-              } catch (e) {
-                console.error('Error parsing JSON from stream:', e);
-                console.log('Raw JSON data:', jsonData);
-              }
+          const chunk = decoder.decode(value, { stream: true });
+          buffer += chunk;
+          
+          // Process complete lines from the buffer
+          let lineEnd = buffer.indexOf('\n');
+          while (lineEnd !== -1) {
+            const line = buffer.substring(0, lineEnd).trim();
+            buffer = buffer.substring(lineEnd + 1);
+            
+            if (line) {
+              processStreamLine(line, onData);
             }
+            
+            lineEnd = buffer.indexOf('\n');
           }
-        } catch (e) {
-          console.error('Error decoding or processing stream chunk:', e);
         }
+        
+        // Process any remaining content in the buffer
+        if (buffer.trim()) {
+          processStreamLine(buffer.trim(), onData);
+        }
+        
+        onComplete();
+      } catch (e) {
+        console.error('Error processing stream:', e);
+        onError(new Error(`Stream processing error: ${e instanceof Error ? e.message : 'Unknown error'}`));
+        onComplete();
       }
-      
-      onComplete();
     }
   } catch (error) {
     if (error instanceof Error) {
@@ -242,6 +252,34 @@ export async function streamCompletion(
       }
     } else {
       onError(new Error('Unknown error occurred'));
+    }
+  }
+}
+
+// Helper to process a line from the SSE stream
+function processStreamLine(line: string, onData: (text: string) => void): void {
+  // Skip empty lines and the keep-alive lines
+  if (!line || line === '[DONE]') return;
+  
+  // Lines should start with "data: "
+  if (line.startsWith('data: ')) {
+    const jsonData = line.substring(6).trim();
+    
+    // End of stream marker
+    if (jsonData === '[DONE]') return;
+    
+    try {
+      // Parse the JSON data
+      const parsedData = JSON.parse(jsonData);
+      
+      // Extract the content
+      const content = extractContentFromResponse(parsedData);
+      
+      if (content) {
+        onData(content);
+      }
+    } catch (e) {
+      console.warn('Failed to parse JSON from stream:', jsonData);
     }
   }
 }

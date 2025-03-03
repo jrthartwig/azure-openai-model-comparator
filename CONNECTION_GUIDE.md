@@ -53,22 +53,6 @@ If you encounter 404 errors when trying to use Phi or DeepSeek models, check the
    - Open `http://localhost:3001/api/health` in your browser.
    - It should return a JSON response confirming the server is running.
 
-## Configuring API Keys and Endpoints
-
-In your `.env` file:
-
-```
-# Phi model configuration
-VITE_PHI_API_KEY=your_phi_api_key_here
-VITE_PHI_BASE_URL=https://phi-4-voljh.eastus.models.ai.azure.com
-
-# DeepSeek model configuration
-VITE_DEEPSEEK_API_KEY=your_deepseek_api_key_here
-VITE_DEEPSEEK_BASE_URL=https://DeepSeek-R1-ibhnj.eastus.models.ai.azure.com
-```
-
-Make sure to use the base URL without any path components (no trailing /v1/chat/completions).
-
 ## Manual Connection Test
 
 To manually test if your backend can connect to the models:
