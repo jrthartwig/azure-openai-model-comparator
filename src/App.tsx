@@ -40,7 +40,7 @@ function AppContent() {
     let enhancedPromptWithRag = prompt;
     
     // If RAG is enabled or we're comparing with/without RAG, get enhanced prompt
-    if (ragConfig.enabled || compareWithWithoutRag) {
+    if ((ragConfig?.enabled || compareWithWithoutRag) && ragConfig) { // Added null check for ragConfig
       try {
         setIsRagSearching(true);
         enhancedPromptWithRag = await enhancePromptWithRag(ragConfig, prompt);
@@ -84,7 +84,7 @@ function AppContent() {
       selectedModelIds.forEach(modelId => {
         modelsToProcess.push({ 
           modelId, 
-          useRag: ragConfig.enabled, 
+          useRag: (ragConfig?.enabled || false), // Added null check for ragConfig
           responseId: modelId 
         });
       });
@@ -214,7 +214,7 @@ function AppContent() {
           </div>
         )}
         
-        {ragConfig.enabled && !isRagSearching && !compareWithWithoutRag && (
+        {ragConfig?.enabled && !isRagSearching && !compareWithWithoutRag && (
           <div className="mt-2 text-sm text-blue-600 dark:text-blue-400 flex items-center">
             <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>

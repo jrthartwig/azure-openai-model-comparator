@@ -1,4 +1,5 @@
 import { useModelContext } from '../context/ModelContext';
+import { useRagContext } from '../context/RagContext'; // Add this import
 import { ModelConfig, ModelResponse } from '../types';
 import { useEffect, useRef } from 'react';
 import { detectModelType } from '../services/azureOpenAI';
@@ -8,6 +9,11 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { ComponentProps } from 'react';
+
+// Define types for ReactMarkdown components to fix type errors
+type ReactMarkdownProps = ComponentProps<typeof ReactMarkdown>;
+type ComponentsType = ReactMarkdownProps['components'];
 
 interface ResponsePanelProps {
   responses: Record<string, ModelResponse>;
@@ -17,6 +23,7 @@ interface ResponsePanelProps {
 
 export default function ResponsePanel({ responses, isStreaming, compareWithWithoutRag = false }: ResponsePanelProps) {
   const { models } = useModelContext();
+  const { ragConfig } = useRagContext(); // Add this to get RAG configuration
   const responsePanelsRef = useRef<Record<string, HTMLDivElement | null>>({});
   
   // Auto-scroll each response panel to the bottom when content updates
@@ -150,7 +157,7 @@ export default function ResponsePanel({ responses, isStreaming, compareWithWitho
   // Code highlighting component with both light and dark mode support
   const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
     const match = /language-(\w+)/.exec(className || '');
-    const language = match ? [1] : 'text';
+    const language = match ? match[1] : 'text'; // Fixed: Access element 1 instead of array literal
     
     return !inline ? (
       <div className="rounded-md overflow-hidden my-4">
@@ -179,6 +186,25 @@ export default function ResponsePanel({ responses, isStreaming, compareWithWitho
         {children}
       </code>
     );
+  };
+
+  // Create Markdown components with proper typings
+  const markdownComponents: ComponentsType = {
+    code: CodeBlock,
+    // Fixed: Use correct type for pre component
+    pre: (props) => <pre {...props} style={{margin: 0}} />,
+    // Fixed: Use correct type for table components
+    table: (props) => (
+      <div className="overflow-x-auto my-6">
+        <table className="border-collapse border border-gray-200 dark:border-gray-700" {...props} />
+      </div>
+    ),
+    th: (props) => (
+      <th className="border border-gray-200 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800" {...props} />
+    ),
+    td: (props) => (
+      <td className="border border-gray-200 dark:border-gray-700 p-2" {...props} />
+    ),
   };
 
   // Group responses by model when in compare with/without RAG mode
@@ -276,21 +302,7 @@ export default function ResponsePanel({ responses, isStreaming, compareWithWitho
                             <ReactMarkdown 
                               remarkPlugins={[remarkGfm]} 
                               rehypePlugins={[rehypeRaw]}
-                              components={{
-                                code: CodeBlock,
-                                pre: ({ node, ...props }) => <div {...props} />,
-                                table: ({ node, ...props }) => (
-                                  <div className="overflow-x-auto my-6">
-                                    <table className="border-collapse border border-gray-200 dark:border-gray-700" {...props} />
-                                  </div>
-                                ),
-                                th: ({ node, ...props }) => (
-                                  <th className="border border-gray-200 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800" {...props} />
-                                ),
-                                td: ({ node, ...props }) => (
-                                  <td className="border border-gray-200 dark:border-gray-700 p-2" {...props} />
-                                ),
-                              }}
+                              components={markdownComponents}
                             >
                               {response.text}
                             </ReactMarkdown>
@@ -427,21 +439,7 @@ export default function ResponsePanel({ responses, isStreaming, compareWithWitho
                   <ReactMarkdown 
                     remarkPlugins={[remarkGfm]} 
                     rehypePlugins={[rehypeRaw]}
-                    components={{
-                      code: CodeBlock,
-                      pre: ({ node, ...props }) => <div {...props} />,
-                      table: ({ node, ...props }) => (
-                        <div className="overflow-x-auto my-6">
-                          <table className="border-collapse border border-gray-200 dark:border-gray-700" {...props} />
-                        </div>
-                      ),
-                      th: ({ node, ...props }) => (
-                        <th className="border border-gray-200 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800" {...props} />
-                      ),
-                      td: ({ node, ...props }) => (
-                        <td className="border border-gray-200 dark:border-gray-700 p-2" {...props} />
-                      ),
-                    }}
+                    components={markdownComponents}
                   >
                     {response.text}
                   </ReactMarkdown>

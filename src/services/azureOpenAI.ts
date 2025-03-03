@@ -18,32 +18,32 @@ interface AzureOpenAIResponse {
   }[];
 }
 
-// Helper to detect model types
-export const detectModelType = (modelConfig: ModelConfig): 'o1' | 'phi' | 'deepseek' | 'standard' => {
-  const deploymentName = (modelConfig.deploymentName || modelConfig.deploymentId || '').toLowerCase();
-  const modelName = (modelConfig.name || '').toLowerCase();
-  const endpoint = (modelConfig.endpoint || '').toLowerCase();
+// Helper to determine what type of model we're dealing with
+export function detectModelType(modelConfig: ModelConfig): 'o1' | 'phi' | 'deepseek' | 'standard' {
+  // Extract useful identifiers to check
+  const deploymentId = modelConfig.deploymentId?.toLowerCase() || '';
+  const deploymentName = modelConfig.deploymentName?.toLowerCase() || '';
+  const name = modelConfig.name?.toLowerCase() || '';
   
-  if (deploymentName.includes('o1') || modelName.includes('o1')) {
+  // Check for the flags first
+  if (modelConfig.isPhiModel === true) return 'phi';
+  if (modelConfig.isDeepseekModel === true) return 'deepseek';
+  
+  // Then check naming patterns
+  if (deploymentId.includes('o1') || deploymentName.includes('o1') || name.includes('o1')) {
     return 'o1';
-  } else if (
-    deploymentName.includes('phi') || 
-    modelName.includes('phi') || 
-    endpoint.includes('phi') ||
-    modelConfig.isPhiModel
-  ) {
-    return 'phi';
-  } else if (
-    deploymentName.includes('deepseek') || 
-    modelName.includes('deepseek') || 
-    endpoint.includes('deepseek') ||
-    modelConfig.isDeepseekModel
-  ) {
-    return 'deepseek';
-  } else {
-    return 'standard';
   }
-};
+  
+  if (deploymentId.includes('phi') || deploymentName.includes('phi') || name.includes('phi')) {
+    return 'phi';
+  }
+  
+  if (deploymentId.includes('deepseek') || deploymentName.includes('deepseek') || name.includes('deepseek')) {
+    return 'deepseek';
+  }
+  
+  return 'standard';
+}
 
 export async function streamCompletion(
   modelConfig: ModelConfig,
@@ -54,131 +54,145 @@ export async function streamCompletion(
   abortSignal?: AbortSignal
 ) {
   try {
-    // Get the model type
+    // Get model type
     const modelType = detectModelType(modelConfig);
-    let url: string;
-    let headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    let requestBody: any;
     
-    // Configure the request based on model type
-    if (modelType === 'phi') {
-      // Use the backend server for Phi models (non-streaming for now)
-      url = '/api/phi';
-      requestBody = {
-        // Include credentials in the request
+    // Special handling for different model types
+    const isO1Model = modelType === 'o1';
+    const isPhiModel = modelType === 'phi';
+    const isDeepseekModel = modelType === 'deepseek';
+    
+    // For Phi and DeepSeek models, use the backend proxy
+    if (isPhiModel || isDeepseekModel) {
+      const proxyEndpoint = isPhiModel ? '/api/phi' : '/api/deepseek';
+      
+      // Prepare request body
+      const requestBody = {
         apiKey: modelConfig.apiKey,
         endpoint: modelConfig.endpoint,
         deploymentId: modelConfig.deploymentId,
-        
-        // Model parameters
-        model: modelConfig.deploymentName || modelConfig.name || "Phi-4",
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 1000,
-        temperature: 0.7,
-        stream: false // Phi doesn't support streaming reliably through our proxy
-      };
-    } else if (modelType === 'deepseek') {
-      // Use the backend server for DeepSeek models with streaming
-      url = '/api/deepseek';
-      requestBody = {
-        // Include credentials in the request
-        apiKey: modelConfig.apiKey,
-        endpoint: modelConfig.endpoint,
-        deploymentId: modelConfig.deploymentId,
-        
-        // Model parameters
-        model: modelConfig.deploymentName || modelConfig.name || "DeepSeek",
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 1000,
-        temperature: 0.7,
-        stream: true // Enable streaming for DeepSeek
-      };
-    } else if (modelType === 'o1') {
-      // For O1 models (non-streaming)
-      const deploymentName = modelConfig.deploymentName || modelConfig.deploymentId;
-      const apiVersion = modelConfig.apiVersion || '2023-12-01-preview';
-      url = `${modelConfig.endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=${apiVersion}`;
-      headers['api-key'] = modelConfig.apiKey;
-      requestBody = {
-        messages: [{ role: 'user', content: prompt }],
-        max_completion_tokens: 2000,
-        stream: false
-      };
-    } else {
-      // For standard models (GPT-4, etc) with streaming
-      const deploymentName = modelConfig.deploymentName || modelConfig.deploymentId;
-      const apiVersion = modelConfig.apiVersion || '2023-12-01-preview';
-      url = `${modelConfig.endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=${apiVersion}`;
-      headers['api-key'] = modelConfig.apiKey;
-      requestBody = {
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 2000,
         stream: true
       };
+      
+      // Make request through our backend proxy
+      const response = await fetch(proxyEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody),
+        signal: abortSignal,
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error from ${modelType} API: ${response.status} - ${errorText}`);
+      }
+      
+      // Handle streaming
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Response body reader could not be created');
+      }
+      
+      const decoder = new TextDecoder('utf-8');
+      
+      // Process stream
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        try {
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(line => line.trim() !== '');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const jsonData = line.substring(6);
+              
+              // End of stream
+              if (jsonData === '[DONE]') {
+                break;
+              }
+              
+              try {
+                const parsedData = JSON.parse(jsonData);
+                const content = parsedData.choices[0]?.delta?.content || '';
+                
+                if (content) {
+                  onData(content);
+                }
+                
+              } catch (e) {
+                console.error('Error parsing JSON from stream:', e);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error decoding or processing stream chunk:', e);
+        }
+      }
+      
+      onComplete();
+      return;
     }
-
-    console.log(`Sending request to ${url} for model type: ${modelType}`);
     
-    // Make the API call
+    // For standard and O1 models, use the Azure OpenAI API directly
+    
+    // Prepare base request body
+    const requestBody: any = {
+      messages: [{ role: 'user', content: prompt }]
+    };
+    
+    // Use the appropriate max tokens parameter based on model type
+    if (isO1Model) {
+      requestBody.max_completion_tokens = 2000;
+      // O1 models don't support streaming
+      requestBody.stream = false;
+    } else {
+      requestBody.max_tokens = 2000;
+      requestBody.stream = true;
+    }
+    
+    // Handle deploymentName vs deploymentId (prefer deploymentName if available)
+    const deploymentName = modelConfig.deploymentName || modelConfig.deploymentId;
+    const apiVersion = modelConfig.apiVersion || '2023-05-15'; // Default API version
+    
+    const url = `${modelConfig.endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=${apiVersion}`;
+    
     const response = await fetch(url, {
       method: 'POST',
-      headers: headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': modelConfig.apiKey,
+      },
       body: JSON.stringify(requestBody),
       signal: abortSignal,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Error response from ${url}:`, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-        body: errorText
-      });
-      
-      if (response.status === 404 && (modelType === 'phi' || modelType === 'deepseek')) {
-        throw new Error(`Backend server endpoint not found. Make sure the server is running with: npm run server`);
-      }
-      
-      throw new Error(`API Error: ${response.status} - ${errorText}`);
+      throw new Error(`Error from Azure OpenAI API: ${response.status} - ${errorText}`);
     }
 
-    // Handle non-streaming responses (O1, Phi)
-    if ((modelType === 'o1' || modelType === 'phi') && !requestBody.stream) {
-      try {
-        const jsonResponse = await response.json();
-        console.log('Received non-streaming response');
-        
-        // Extract the content from the response
-        let content = '';
-        
-        if (jsonResponse.choices && jsonResponse.choices.length > 0) {
-          content = jsonResponse.choices[0]?.message?.content || '';
-        }
-        
-        if (content) {
-          onData(content);
-        } else {
-          console.error('No content found in response:', jsonResponse);
-          throw new Error('No content found in the response');
-        }
-        
-        onComplete();
-      } catch (e) {
-        console.error('Error processing non-streaming response:', e);
-        onError(new Error(`Failed to process response: ${e instanceof Error ? e.message : 'Unknown error'}`));
-        onComplete();
+    // Different handling for O1 models (non-streaming) vs other models (streaming)
+    if (isO1Model) {
+      // Handle non-streaming response for O1 models
+      const jsonResponse = await response.json();
+      
+      // Get the content from the response
+      const content = jsonResponse.choices[0]?.message?.content || '';
+      
+      if (content) {
+        // We could simulate streaming by chunking the response, but let's just send it all at once for now
+        onData(content);
       }
+      
+      onComplete();
     } else {
-      // Handle streaming responses (standard models and DeepSeek)
+      // Handle streaming for all other models
       const reader = response.body?.getReader();
       if (!reader) {
         throw new Error('Response body reader could not be created');
@@ -208,8 +222,8 @@ export async function streamCompletion(
               try {
                 const parsedData: AzureOpenAIResponse = JSON.parse(jsonData);
                 
-                // Extract content from the delta (for chat completion)
-                const content = parsedData.choices[0]?.delta?.content || '';
+                // Extract content from the delta (for chat completion) or text (for completion)
+                const content = parsedData.choices[0]?.delta?.content || parsedData.choices[0]?.text || '';
                 
                 if (content) {
                   onData(content);
@@ -221,7 +235,6 @@ export async function streamCompletion(
                 }
               } catch (e) {
                 console.error('Error parsing JSON from stream:', e);
-                console.log('Raw JSON data:', jsonData);
               }
             }
           }
@@ -237,7 +250,6 @@ export async function streamCompletion(
       if (error.name === 'AbortError') {
         console.log('Stream was aborted');
       } else {
-        console.error('Error in streamCompletion:', error);
         onError(error);
       }
     } else {
