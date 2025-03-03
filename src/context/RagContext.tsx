@@ -7,6 +7,8 @@ interface RagContextProps {
   toggleRagEnabled: () => void;
   getRagStatus: () => 'configured' | 'enabled' | 'disabled';
   isReady: boolean;
+  compareWithWithoutRag: boolean;
+  setCompareWithWithoutRag: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const defaultRagConfig: RagConfig = {
@@ -33,6 +35,8 @@ interface RagProviderProps {
 
 export const RagProvider: React.FC<RagProviderProps> = ({ children }) => {
   const [ragConfig, setRagConfig] = useState<RagConfig>(defaultRagConfig);
+  // Add state for comparing with/without RAG
+  const [compareWithWithoutRag, setCompareWithWithoutRag] = useState<boolean>(false);
 
   // Toggle RAG enabled state
   const toggleRagEnabled = () => {
@@ -58,7 +62,9 @@ export const RagProvider: React.FC<RagProviderProps> = ({ children }) => {
       setRagConfig,
       toggleRagEnabled,
       getRagStatus,
-      isReady
+      isReady,
+      compareWithWithoutRag,
+      setCompareWithWithoutRag
     }}>
       {children}
     </RagContext.Provider>

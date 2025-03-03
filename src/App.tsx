@@ -11,7 +11,7 @@ import ResponsePanel from './components/ResponsePanel';
 
 function AppContent() {
   const { models, selectedModelIds } = useModelContext();
-  const { ragConfig } = useRagContext();
+  const { ragConfig, compareWithWithoutRag } = useRagContext();
   const [isStreaming, setIsStreaming] = useState(false);
   const [responses, setResponses] = useState<Record<string, ModelResponse>>({});
   const [isRagSearching, setIsRagSearching] = useState(false);
@@ -37,12 +37,13 @@ function AppContent() {
     setIsStreaming(true);
     
     let enhancedPrompt = prompt;
+    let enhancedPromptWithRag = prompt;
     
-    // If RAG is enabled, enhance prompt with document search
-    if (ragConfig.enabled) {
+    // If RAG is enabled or we're comparing with/without RAG, get enhanced prompt
+    if (ragConfig.enabled || compareWithWithoutRag) {
       try {
         setIsRagSearching(true);
-        enhancedPrompt = await enhancePromptWithRag(ragConfig, prompt);
+        enhancedPromptWithRag = await enhancePromptWithRag(ragConfig, prompt);
         setIsRagSearching(false);
       } catch (error) {
         console.error('Error enhancing prompt with RAG:', error);
@@ -56,42 +57,83 @@ function AppContent() {
     // Create new abort controllers for this batch of requests
     const newAbortControllers: Record<string, AbortController> = {};
     
-    // Process each selected model
-    const modelPromises = selectedModelIds.map(async (modelId) => {
+    // Determine which models and RAG combinations to process
+    let modelsToProcess: Array<{
+      modelId: string;
+      useRag: boolean;
+      responseId: string;
+    }> = [];
+    
+    // Build the list of models and RAG combinations to process
+    if (compareWithWithoutRag) {
+      // For each selected model, we'll do both with and without RAG
+      selectedModelIds.forEach(modelId => {
+        modelsToProcess.push({ 
+          modelId, 
+          useRag: true, 
+          responseId: `${modelId}-rag` 
+        });
+        modelsToProcess.push({ 
+          modelId, 
+          useRag: false, 
+          responseId: `${modelId}-norag` 
+        });
+      });
+    } else {
+      // Just use selected models with current RAG setting
+      selectedModelIds.forEach(modelId => {
+        modelsToProcess.push({ 
+          modelId, 
+          useRag: ragConfig.enabled, 
+          responseId: modelId 
+        });
+      });
+    }
+    
+    // Process each model/RAG combination
+    const modelPromises = modelsToProcess.map(async ({ modelId, useRag, responseId }) => {
       const model = models.find(m => m.id === modelId);
       if (!model) return;
       
       // Initialize empty response
       setResponses(prev => ({
         ...prev,
-        [modelId]: { modelId, text: '', isComplete: false }
+        [responseId]: { 
+          modelId, 
+          text: '', 
+          isComplete: false,
+          useRag // Add flag indicating if RAG was used
+        }
       }));
       
       // Create an AbortController for this request
       const controller = new AbortController();
-      newAbortControllers[modelId] = controller;
+      newAbortControllers[responseId] = controller;
       
       try {
+        // Choose the appropriate prompt based on whether we're using RAG
+        const promptToUse = useRag ? enhancedPromptWithRag : prompt;
+        
         await streamCompletion(
           model,
-          enhancedPrompt, // Use the RAG-enhanced prompt if RAG is enabled
+          promptToUse,
           (text) => {
             // Append new text to the response
             setResponses(prev => ({
               ...prev,
-              [modelId]: {
-                ...prev[modelId],
-                text: (prev[modelId]?.text || '') + text
+              [responseId]: {
+                ...prev[responseId],
+                text: (prev[responseId]?.text || '') + text
               }
             }));
           },
           (error) => {
             // Handle errors
-            console.error(`Error from model ${modelId}:`, error);
+            console.error(`Error from model ${responseId}:`, error);
             setResponses(prev => ({
               ...prev,
-              [modelId]: {
-                ...prev[modelId],
+              [responseId]: {
+                ...prev[responseId],
                 error: error.message,
                 isComplete: true
               }
@@ -101,24 +143,24 @@ function AppContent() {
             // Mark as complete
             setResponses(prev => ({
               ...prev,
-              [modelId]: {
-                ...prev[modelId],
+              [responseId]: {
+                ...prev[responseId],
                 isComplete: true
               }
             }));
             
             // Remove the controller
-            delete newAbortControllers[modelId];
+            delete newAbortControllers[responseId];
             setAbortControllers(prev => {
               const updated = { ...prev };
-              delete updated[modelId];
+              delete updated[responseId];
               return updated;
             });
           },
           controller.signal
         );
       } catch (error) {
-        console.error(`Failed to process model ${modelId}:`, error);
+        console.error(`Failed to process model ${responseId}:`, error);
       }
     });
     
@@ -168,7 +210,7 @@ function AppContent() {
           </div>
         )}
         
-        {ragConfig.enabled && !isRagSearching && (
+        {ragConfig.enabled && !isRagSearching && !compareWithWithoutRag && (
           <div className="mt-2 text-sm text-blue-600 dark:text-blue-400 flex items-center">
             <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -176,10 +218,23 @@ function AppContent() {
             <span>RAG enabled - Responses will be augmented with document search</span>
           </div>
         )}
+        
+        {compareWithWithoutRag && !isRagSearching && (
+          <div className="mt-2 text-sm text-purple-600 dark:text-purple-400 flex items-center">
+            <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span>RAG comparison mode - Each model will be tested both with and without RAG</span>
+          </div>
+        )}
       </div>
       
       <div>
-        <ResponsePanel responses={responses} isStreaming={isStreaming} />
+        <ResponsePanel 
+          responses={responses} 
+          isStreaming={isStreaming} 
+          compareWithWithoutRag={compareWithWithoutRag} 
+        />
       </div>
     </main>
   );
