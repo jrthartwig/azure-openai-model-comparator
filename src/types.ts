@@ -5,17 +5,18 @@ export interface AzureOpenAIModel {
   apiKey: string;
   deploymentId: string;
   modelVersion?: string;
-  // Add any other necessary properties
 }
 
 export interface ModelConfig {
+  id?: string;
   endpoint: string;
   apiKey: string;
   deploymentId: string;
-  deploymentName?: string; // Added missing property
-  name?: string;           // Added missing property
-  apiVersion?: string;     // Added missing property
-  // Add any other necessary properties
+  deploymentName?: string; // Name of the deployed model
+  name?: string;           // Display name for the model
+  apiVersion?: string;     // API version for standard Azure OpenAI models
+  isPhiModel?: boolean;    // Flag to identify Phi models
+  isDeepseekModel?: boolean; // Flag to identify DeepSeek models
 }
 
 export interface ModelResponse {
@@ -28,4 +29,34 @@ export interface ModelResponse {
 export interface StreamingState {
   isStreaming: boolean;
   responses: Record<string, ModelResponse>;
+}
+
+// RAG-specific types
+export interface RagConfig {
+  enabled: boolean;
+  indexEndpoint: string;
+  indexName: string;
+  apiKey: string;
+  apiVersion?: string;
+}
+
+export interface RagDocument {
+  id: string;
+  content: string;
+  title?: string;
+  url?: string;
+  source?: string;
+}
+
+export interface RagSearchResult {
+  documents: RagDocument[];
+  query: string;
+}
+
+export interface RagRequestOptions {
+  top?: number;
+  query: string;
+  filter?: string;
+  queryType?: 'simple' | 'semantic';
+  semanticConfiguration?: string;
 }
