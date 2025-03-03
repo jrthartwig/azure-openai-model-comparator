@@ -1,5 +1,6 @@
 import { useModelContext } from '../context/ModelContext';
-import { useRagContext } from '../context/RagContext'; // Add this import
+// Remove unused import
+// import { useRagContext } from '../context/RagContext';
 import { ModelConfig, ModelResponse } from '../types';
 import { useEffect, useRef } from 'react';
 import { detectModelType } from '../services/azureOpenAI';
@@ -9,11 +10,19 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 
-// Define types for ReactMarkdown components to fix type errors
+// Define proper types for ReactMarkdown components
 type ReactMarkdownProps = ComponentProps<typeof ReactMarkdown>;
 type ComponentsType = ReactMarkdownProps['components'];
+
+// Type for custom components that can be passed to ReactMarkdown
+interface MarkdownComponentProps {
+  node?: any;
+  inline?: boolean;
+  className?: string;
+  children?: ReactNode;
+}
 
 interface ResponsePanelProps {
   responses: Record<string, ModelResponse>;
@@ -23,7 +32,8 @@ interface ResponsePanelProps {
 
 export default function ResponsePanel({ responses, isStreaming, compareWithWithoutRag = false }: ResponsePanelProps) {
   const { models } = useModelContext();
-  const { ragConfig } = useRagContext(); // Add this to get RAG configuration
+  // Remove unused context
+  // const { ragConfig } = useRagContext();
   const responsePanelsRef = useRef<Record<string, HTMLDivElement | null>>({});
   
   // Auto-scroll each response panel to the bottom when content updates
@@ -108,26 +118,6 @@ export default function ResponsePanel({ responses, isStreaming, compareWithWitho
     }
   };
   
-  // Get loading state icon for each model type
-  const getLoadingStateIcon = (modelType: string) => {
-    if (modelType === 'deepseek') {
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
-             className="w-6 h-6 text-blue-600 dark:text-blue-400">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      );
-    }
-    return (
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
-           className="w-6 h-6 text-blue-600 dark:text-blue-400">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    );
-  };
-  
   // Get loading state message for each model type
   const getLoadingStateMessage = (modelType: string) => {
     switch(modelType) {
@@ -155,9 +145,9 @@ export default function ResponsePanel({ responses, isStreaming, compareWithWitho
   }
 
   // Code highlighting component with both light and dark mode support
-  const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
+  const CodeBlock = ({ node, inline, className, children, ...props }: MarkdownComponentProps) => {
     const match = /language-(\w+)/.exec(className || '');
-    const language = match ? match[1] : 'text'; // Fixed: Access element 1 instead of array literal
+    const language = match ? match[1] : 'text';
     
     return !inline ? (
       <div className="rounded-md overflow-hidden my-4">
@@ -188,22 +178,21 @@ export default function ResponsePanel({ responses, isStreaming, compareWithWitho
     );
   };
 
-  // Create Markdown components with proper typings
+  // Define properly typed markdown components
   const markdownComponents: ComponentsType = {
-    code: CodeBlock,
-    // Fixed: Use correct type for pre component
-    pre: (props) => <pre {...props} style={{margin: 0}} />,
-    // Fixed: Use correct type for table components
-    table: (props) => (
+    code: CodeBlock as any,
+    // Properly typed components with their correct HTML element types
+    pre: ({ children }) => <pre className="mt-0 mb-0">{children}</pre>,
+    table: ({ children }) => (
       <div className="overflow-x-auto my-6">
-        <table className="border-collapse border border-gray-200 dark:border-gray-700" {...props} />
+        <table className="border-collapse border border-gray-200 dark:border-gray-700">{children}</table>
       </div>
     ),
-    th: (props) => (
-      <th className="border border-gray-200 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800" {...props} />
+    th: ({ children }) => (
+      <th className="border border-gray-200 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800">{children}</th>
     ),
-    td: (props) => (
-      <td className="border border-gray-200 dark:border-gray-700 p-2" {...props} />
+    td: ({ children }) => (
+      <td className="border border-gray-200 dark:border-gray-700 p-2">{children}</td>
     ),
   };
 
@@ -359,6 +348,7 @@ export default function ResponsePanel({ responses, isStreaming, compareWithWitho
     );
   }
 
+  // Standard view (not comparing with/without RAG)
   // Arrange responses in a grid layout
   const gridColsClass = responseEntries.length === 1 
     ? "grid-cols-1" 

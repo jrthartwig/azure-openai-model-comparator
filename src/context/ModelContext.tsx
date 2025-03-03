@@ -1,9 +1,10 @@
-import React, { useState, createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { ModelConfig } from '../types';
 
 interface ModelContextProps {
   models: ModelConfig[];
-  selectedModelIds: string[];
+  selectedModelIds: string[];  // Keep this for backward compatibility
+  selectedModels: ModelConfig[]; // Add this to fix the error
   addModel: (model: ModelConfig) => void;
   updateModel: (id: string, model: Partial<ModelConfig>) => void;
   removeModel: (id: string) => void;
@@ -27,17 +28,23 @@ interface ModelProviderProps {
 
 export const ModelProvider: React.FC<ModelProviderProps> = ({ children }) => {
   const [models, setModels] = useState<ModelConfig[]>([]);
-  const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
+
+  // Get only the selected models
+  const selectedModels = models.filter(model => model.selected);
+  
+  // Get IDs of selected models
+  const selectedModelIds = selectedModels.map(model => model.id || '').filter(id => id !== '');
 
   const addModel = (model: ModelConfig) => {
-    // Generate a unique ID if not provided
-    const newModel = { 
-      ...model, 
-      id: model.id || `model-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` 
+    // Generate an ID if not provided
+    const modelWithId = {
+      ...model,
+      id: model.id || `model-${Date.now()}`,
+      // If deploymentId is missing but deploymentName is present, set deploymentId to deploymentName
+      deploymentId: model.deploymentId || model.deploymentName || '',
     };
     
-    setModels(prevModels => [...prevModels, newModel]);
-    return newModel.id;
+    setModels(prev => [...prev, modelWithId]);
   };
 
   const updateModel = (id: string, updates: Partial<ModelConfig>) => {
@@ -49,19 +56,13 @@ export const ModelProvider: React.FC<ModelProviderProps> = ({ children }) => {
   };
 
   const removeModel = (id: string) => {
-    setModels(prevModels => prevModels.filter(model => model.id !== id));
-    // Also remove from selection if selected
-    setSelectedModelIds(prevSelected => prevSelected.filter(modelId => modelId !== id));
+    setModels(prev => prev.filter(m => m.id !== id));
   };
 
   const toggleModelSelection = (id: string) => {
-    setSelectedModelIds(prevSelected => {
-      if (prevSelected.includes(id)) {
-        return prevSelected.filter(modelId => modelId !== id);
-      } else {
-        return [...prevSelected, id];
-      }
-    });
+    setModels(prev => prev.map(model => 
+      model.id === id ? { ...model, selected: !model.selected } : model
+    ));
   };
 
   const isModelSelected = (id: string) => {
@@ -69,12 +70,13 @@ export const ModelProvider: React.FC<ModelProviderProps> = ({ children }) => {
   };
 
   return (
-    <ModelContext.Provider value={{
-      models,
-      selectedModelIds,
-      addModel,
+    <ModelContext.Provider value={{ 
+      models, 
+      selectedModelIds, 
+      selectedModels,
+      addModel, 
       updateModel,
-      removeModel,
+      removeModel, 
       toggleModelSelection,
       isModelSelected
     }}>

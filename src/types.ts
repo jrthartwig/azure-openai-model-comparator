@@ -8,15 +8,16 @@ export interface AzureOpenAIModel {
 }
 
 export interface ModelConfig {
-  id?: string;
+  id?: string; // Make id optional
   endpoint: string;
   apiKey: string;
-  deploymentId: string;
+  deploymentId: string; // Required
   deploymentName?: string; // Name of the deployed model
-  name?: string;           // Display name for the model
-  apiVersion?: string;     // API version for standard Azure OpenAI models
-  isPhiModel?: boolean;    // Flag to identify Phi models
+  name?: string; // Display name for the model
+  apiVersion?: string; // API version for standard Azure OpenAI models
+  isPhiModel?: boolean; // Flag to identify Phi models
   isDeepseekModel?: boolean; // Flag to identify DeepSeek models
+  selected?: boolean; // Add selected flag
 }
 
 export interface ModelResponse {
@@ -24,8 +25,8 @@ export interface ModelResponse {
   text: string;
   isComplete: boolean;
   error?: string;
-  useRag?: boolean;        // Flag to indicate if RAG was used for this response
-  modelName?: string;      // Display name of the model
+  useRag?: boolean; // Flag to indicate if RAG was used for this response
+  modelName?: string; // Display name of the model
 }
 
 export interface StreamingState {

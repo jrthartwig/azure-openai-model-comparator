@@ -10,6 +10,7 @@ import PromptInput from './components/PromptInput';
 import ResponsePanel from './components/ResponsePanel';
 
 function AppContent() {
+  // Use selectedModelIds from context
   const { models, selectedModelIds } = useModelContext();
   const { ragConfig, compareWithWithoutRag } = useRagContext();
   const [isStreaming, setIsStreaming] = useState(false);
@@ -36,7 +37,6 @@ function AppContent() {
     setResponses({});
     setIsStreaming(true);
     
-    let enhancedPrompt = prompt;
     let enhancedPromptWithRag = prompt;
     
     // If RAG is enabled or we're comparing with/without RAG, get enhanced prompt
