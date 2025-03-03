@@ -95,14 +95,18 @@ function AppContent() {
       const model = models.find(m => m.id === modelId);
       if (!model) return;
       
-      // Initialize empty response
+      // Make sure we always pass the display name for the model
+      const displayName = model.name || model.deploymentId || modelId;
+      
+      // Initialize empty response with clear model name
       setResponses(prev => ({
         ...prev,
         [responseId]: { 
           modelId, 
           text: '', 
           isComplete: false,
-          useRag // Add flag indicating if RAG was used
+          useRag: useRag,
+          modelName: displayName
         }
       }));
       

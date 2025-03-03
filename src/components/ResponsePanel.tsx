@@ -37,21 +37,54 @@ export default function ResponsePanel({ responses, isStreaming, compareWithWitho
 
   // Find model by id
   const getModel = (modelId: string): ModelConfig | undefined => {
+    // Clean the modelId if it contains RAG indicators
+    const cleanId = modelId.split('-')[0]; // Extract base model ID from responseId if it has -rag or -norag suffix
     return models.find((m: ModelConfig) => 
-      ((m as any).id === modelId) || (m.deploymentId === modelId)
+      ((m as any).id === cleanId) || (m.deploymentId === cleanId)
     );
   };
 
-  // Find model name by id
-  const getModelName = (modelId: string) => {
+  // Find model name by id - but prefer using the modelName from the response if available
+  const getModelName = (modelId: string, response?: ModelResponse): string => {
+    // First try to get name directly from response
+    if (response && response.modelName) {
+      return response.modelName;
+    }
+    
     const model = getModel(modelId);
     return model ? (model.name || model.deploymentId) : modelId;
   };
-  
+
   // Get the model type (o1, phi, or standard)
   const getModelType = (modelId: string) => {
     const model = getModel(modelId);
     return model ? detectModelType(model) : 'standard';
+  };
+  
+  // Get model display badge (for model type)
+  const getModelBadge = (modelType: string) => {
+    switch(modelType) {
+      case 'o1':
+        return (
+          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+            O1
+          </span>
+        );
+      case 'phi':
+        return (
+          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+            Phi
+          </span>
+        );
+      case 'deepseek':
+        return (
+          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+            DeepSeek
+          </span>
+        );
+      default:
+        return null;
+    }
   };
   
   // Get loading state text by model type
@@ -117,7 +150,7 @@ export default function ResponsePanel({ responses, isStreaming, compareWithWitho
   // Code highlighting component with both light and dark mode support
   const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
     const match = /language-(\w+)/.exec(className || '');
-    const language = match ? match[1] : 'text';
+    const language = match ? [1] : 'text';
     
     return !inline ? (
       <div className="rounded-md overflow-hidden my-4">
@@ -167,7 +200,9 @@ export default function ResponsePanel({ responses, isStreaming, compareWithWitho
     return (
       <div className="space-y-6">
         {Object.entries(responseGroups).map(([modelId, modelResponses]) => {
-          const modelName = getModelName(modelId);
+          // Get the first response to use for model name and type
+          const firstResponse = modelResponses[0]?.response;
+          const modelName = getModelName(modelId, firstResponse);
           const modelType = getModelType(modelId);
           
           return (
@@ -175,19 +210,11 @@ export default function ResponsePanel({ responses, isStreaming, compareWithWitho
               <div className={`p-4 border-b border-gray-200 dark:border-gray-700 
                              ${modelType === 'o1' ? 'bg-purple-50 dark:bg-purple-900/20' : 
                                modelType === 'phi' ? 'bg-emerald-50 dark:bg-emerald-900/20' : 
+                               modelType === 'deepseek' ? 'bg-blue-50 dark:bg-blue-900/20' :
                                'bg-gray-100 dark:bg-gray-800'}`}>
                 <h3 className="font-medium text-gray-900 dark:text-white flex items-center">
-                  {modelName}
-                  {modelType === 'phi' && (
-                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-                      Phi
-                    </span>
-                  )}
-                  {modelType === 'o1' && (
-                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                      O1
-                    </span>
-                  )}
+                  <span className="font-semibold">{modelName}</span>
+                  {getModelBadge(modelType)}
                 </h3>
               </div>
               
@@ -328,6 +355,7 @@ export default function ResponsePanel({ responses, isStreaming, compareWithWitho
   return (
     <div className={`grid ${gridColsClass} gap-6`}>
       {responseEntries.map(([modelId, response]) => {
+        const modelName = getModelName(modelId, response);
         const modelType = getModelType(modelId);
         
         return (
@@ -338,18 +366,19 @@ export default function ResponsePanel({ responses, isStreaming, compareWithWitho
             <div className={`p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center
                            ${modelType === 'o1' ? 'bg-purple-50 dark:bg-purple-900/20' : 
                              modelType === 'phi' ? 'bg-emerald-50 dark:bg-emerald-900/20' : 
+                             modelType === 'deepseek' ? 'bg-blue-50 dark:bg-blue-900/20' :
                              'bg-gray-100 dark:bg-gray-800'}`}
             >
               <div className="flex items-center">
-                <h3 className="font-medium text-gray-900 dark:text-white">{getModelName(modelId)}</h3>
-                {modelType === 'phi' && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-                    Phi
-                  </span>
-                )}
-                {modelType === 'o1' && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                    O1
+                <h3 className="font-medium text-gray-900 dark:text-white flex items-center">
+                  <span className="font-semibold">{modelName}</span>
+                  {getModelBadge(modelType)}
+                </h3>
+                
+                {/* Add RAG indicator if enabled */}
+                {response.useRag && (
+                  <span className="ml-3 inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    RAG
                   </span>
                 )}
               </div>

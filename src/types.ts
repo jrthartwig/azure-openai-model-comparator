@@ -24,6 +24,8 @@ export interface ModelResponse {
   text: string;
   isComplete: boolean;
   error?: string;
+  useRag?: boolean;        // Flag to indicate if RAG was used for this response
+  modelName?: string;      // Display name of the model
 }
 
 export interface StreamingState {
