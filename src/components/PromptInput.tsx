@@ -4,79 +4,81 @@ import { useModelContext } from '../context/ModelContext';
 interface PromptInputProps {
   onSubmit: (prompt: string) => void;
   isStreaming: boolean;
-  onStopStreaming: () => void;
+  onStopGeneration: () => void;
+  isSubmitDisabled?: boolean;
+  submitTooltip?: string;
 }
 
-export default function PromptInput({ onSubmit, isStreaming, onStopStreaming }: PromptInputProps) {
+export default function PromptInput({ 
+  onSubmit, 
+  isStreaming,
+  onStopGeneration,
+  isSubmitDisabled = false,
+  submitTooltip = ""
+}: PromptInputProps) {
   const [prompt, setPrompt] = useState<string>('');
-  const { selectedModels } = useModelContext();
-  const hasEnoughModels = selectedModels.length >= 2;
+  const { selectedModelIds } = useModelContext();
+  const hasEnoughModels = selectedModelIds.length >= 2;
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (prompt.trim() && hasEnoughModels) {
+    if (prompt.trim() && !isSubmitDisabled) {
       onSubmit(prompt.trim());
     }
   };
   
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <div className="relative">
-          <textarea
-            id="prompt"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            disabled={isStreaming}
-            placeholder="Enter a prompt for the AI models..."
-            rows={6}
-            className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm 
-                     focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400
-                     disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-500 dark:disabled:text-gray-400
-                     px-4 py-3 text-base resize-y"
-          />
-          {prompt.length > 0 && !isStreaming && (
-            <button 
-              type="button"
-              onClick={() => setPrompt('')}
-              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
+    <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+      <label htmlFor="prompt" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+        Prompt
+      </label>
       
-      <div className="flex justify-end">
+      <textarea
+        id="prompt"
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+        placeholder="Enter your prompt here..."
+        rows={4}
+        disabled={isStreaming}
+      ></textarea>
+      
+      <div className="mt-4 flex justify-end">
         {isStreaming ? (
           <button
             type="button"
-            onClick={onStopStreaming}
-            className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-md 
-                     shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 
-                     focus:ring-offset-2 focus:ring-red-500 transition-colors"
+            onClick={onStopGeneration}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md flex items-center"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-1.5">
-              <path d="M5.25 3A2.25 2.25 0 003 5.25v9.5A2.25 2.25 0 005.25 17h9.5A2.25 2.25 0 0017 14.75v-9.5A2.25 2.25 0 0014.75 3h-9.5z" />
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
             Stop Generation
           </button>
         ) : (
-          <button
-            type="submit"
-            disabled={!prompt.trim() || !hasEnoughModels}
-            className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-md 
-                     shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 
-                     focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-300 dark:disabled:bg-gray-600 
-                     disabled:cursor-not-allowed transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-1.5">
-              <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-            </svg>
-            Send Prompt
-          </button>
+          <div className="relative">
+            <button
+              type="submit"
+              className={`px-4 py-2 bg-blue-600 text-white rounded-md flex items-center ${
+                isSubmitDisabled 
+                  ? 'opacity-50 cursor-not-allowed' 
+                  : 'hover:bg-blue-700'
+              }`}
+              disabled={isSubmitDisabled || !prompt.trim()}
+              data-tooltip-content={submitTooltip}
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+              </svg>
+              Send Prompt
+            </button>
+            {submitTooltip && isSubmitDisabled && (
+              <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 px-3 py-2 bg-gray-800 text-white text-sm rounded-md whitespace-nowrap">
+                {submitTooltip}
+                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-t-4 border-gray-800 border-x-4 border-x-transparent"></div>
+              </div>
+            )}
+          </div>
         )}
       </div>
       

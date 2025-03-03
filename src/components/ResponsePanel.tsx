@@ -107,7 +107,7 @@ export default function ResponsePanel({ responses, isStreaming }: ResponsePanelP
     return (
       <div className="text-center py-10">
         <p className="text-gray-500 dark:text-gray-400">
-          No responses yet. Select models and submit a prompt to begin comparison.
+          No responses yet. Select a model and submit a prompt to begin.
         </p>
       </div>
     );
@@ -148,8 +148,12 @@ export default function ResponsePanel({ responses, isStreaming }: ResponsePanelP
   };
 
   // Arrange responses in a grid layout
+  const gridColsClass = responseEntries.length === 1 
+    ? "grid-cols-1" 
+    : "grid-cols-1 md:grid-cols-2";
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className={`grid ${gridColsClass} gap-6`}>
       {responseEntries.map(([modelId, response]) => {
         const modelType = getModelType(modelId);
         
