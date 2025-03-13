@@ -56,7 +56,7 @@ All model credentials can be configured directly through the frontend UI. For ea
 
 ### Phi and DeepSeek Models
 
-- **Endpoint**: The Azure AI Studio endpoint (e.g., `https://phi-4-voljh.eastus.models.ai.azure.com` or `https://DeepSeek-R1-ibhnj.eastus.models.ai.azure.com`)
+- **Endpoint**: The Azure AI Studio endpoint (e.g., `https://phi-4-ssdfs.eastus.models.ai.azure.com` or `https://DeepSeek-R1-sdfsd.eastus.models.ai.azure.com`)
 - **API Key**: Your Azure AI Studio API key
 - **Deployment ID**: Optional, sometimes not needed for these models
 
